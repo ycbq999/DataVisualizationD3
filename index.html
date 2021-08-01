@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<!-- Load d3.js -->
+<script src='https://d3js.org/d3.v3.min.js' charset="utf-8"></script>
+<!-- Create a div where the graph will take place -->
+<div id="my_dataviz"> </div>
+
+<div id="navigation"> 
+	<a href="#" class="previous round">&#8249;</a>
+	<a href="financial.html" class="next round">&#8250;</a>
+</div>
+
+<style>
+#navigation {
+
+  width: 1000;
+  text-align: left 
+}
+
+a {
+  text-decoration: none;
+  display: inline-block;
+  padding: 8px 16px;
+}
+
+a:hover {
+  background-color: #ddd;
+  color: black;
+}
+
+.previous {
+  background-color: #f1f1f1;
+  color: black;
+}
+
+.next {
+  background-color: #04AA6D;
+  color: white;
+}
+
+.round {
+  border-radius: 50%;
+}
+
+
+/*css2 on script
+*/
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+
+}
+
+
+.chart_focus_area{
+  fill: steelblue;
+  clip-path: url(#clip);
+
+}
+
+.overlay {
+    fill: none;
+    pointer-events: all;
+}
+
+.focus text {
+    font-size: 14px;
+}
+
+.tooltip {
+    fill: white;
+    stroke: #000;
+}
+
+.tooltip-date, .tooltip-likes {
+    font-weight: bold;
+}
+
+.chart__range-selection text {
+cursor: pointer;
+
+text-decoration: underline;
+
+}
+
+.chart__range-selection text: hover {
+background-color: yellow;
+	
+}
+
+</style>
+
+
+<script>
+
+//set the dimensions and margins of the graph
+	var margin = {top: 20, right: 30, bottom: 30, left: 10},
+		margin2  = {top: 210, right: 20, bottom: 20, left: 50},
+	    width = 1000 - margin.left - margin.right,
+	    height = 600 - margin.top - margin.bottom;
+	    tooltip = { width: 100, height: 100, x: 10, y: -30 };
+
+
+	//append the svg object to the body of the page
+
+	var parseDate = d3.time.format("%Y-%m-%d").parse;
+
+	// for tooltip
+	var bisectDate = d3.bisector(function(d) { return d.date; }).left
+
+	var dateFormatter = d3.time.format("%m/%d/%y");
+
+	var x  = d3.time.scale().range([0, width-margin.right]),
+		x2 = d3.time.scale().range([0, width-margin.right]),
+		y  = d3.scale.linear().range([height, 0]);
+		y2  = d3.scale.linear().range([height, 0]);
+
+
+
+	var xAxis   = d3.svg.axis().scale(x).orient('bottom'),
+	    xAxis2  = d3.svg.axis().scale(x2).orient('bottom'),
+	    yAxis   = d3.svg.axis().scale(y).orient('left');
+
+	// var priceLine = d3.svg.line()
+	//     .x(function(d) { return x(d.date)})
+	//     .y(function(d) { return y(d.price)});
+
+	var svg = d3.select("#my_dataviz")
+	    .append("svg")
+	    .attr("width", width + margin.left + margin.right+100)
+	    .attr("height", height + margin.top + margin.bottom+100)// add 100 to give more space on axis
+	    .append("g")
+	    .attr("transform","translate(" + margin.left + "," + margin.top + ")");
+
+	var area = d3.svg.area()
+        .interpolate("monotone")        
+        .x(function (d) { return x(d.date); })
+        .y0(height)
+        .y1(function (d) { return y(d.price); });
+
+	svg.append("defs").append("clipPath")
+		.attr("id", "clip")
+		.append("rect")
+		.attr("width", width)
+		.attr("height", height);
+
+
+	var focus = svg.append('g')		
+	    .attr('class', 'focus')
+	    .attr("height", height + margin.top + margin.bottom+100)
+	    .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+
+	var legend = svg.append('g')  // non chart section
+		.attr('class', 'chart__legend')
+		.attr('width', width)
+		.attr('height', 30)
+		.attr('transform', 'translate(' + margin2.left + ', 10)');
+
+	legend.append('text')     // non chart section
+		.attr('class', 'chart__symbol')
+		.text('NASDAQ: AAPL')// var
+	//   
+	var rangeSelection =  legend
+		.append('g')
+		.attr('class', 'chart__range-selection')
+		.attr('transform', 'translate(710, 0)');
+
+	// Add a brush
+	var brush = d3.svg.brush()
+        .x(x2)
+        .on("brush", brushed);
+
+	//read the data
+	// url = 'https://raw.githubusercontent.com/ycbq999/DataVisualizationD3/main/data/AAPL.csv'
+
+	url = 'https://raw.githubusercontent.com/ycbq999/DataVisualizationD3/main/data/AAPL_5years.csv'
+
+
+	d3.csv(url, type, function(data){
+
+		//console.log(XRange)
+		x.domain(d3.extent(data.map(function(d) { return d.date; })));
+    	y.domain(d3.extent(data.map(function(d) { return d.price;})));
+  		// console.log(data[1].date) 		
+
+     	focus.append('path')
+	        .datum(data)
+	        .attr("fill", "none")
+            .attr('class', 'chart_focus_area')
+            .attr('transform', 'translate(12, 0)')
+		    //.attr("stroke-width", 1)
+	        .attr("d", area);	        
+
+  		//Add xAxis
+  		focus.append('g')
+  			.attr('class', 'x axis')
+  			.attr("transform",  "translate(12," + height + ")")
+      		.call(xAxis);
+      	//Add yAxis
+    	focus.append('g')
+	        .attr('class', 'y axis')	        
+	        .attr('transform', 'translate(12, 0)')
+	        .call(yAxis);
+
+
+
+	    var priceTooltip = focus.append('g')
+	        .attr('class', 'tooltip_area')
+	        .attr('transform', 'translate(12, 0)')
+	        .style('display', 'none')
+
+	    priceTooltip.append("circle")
+	    	.attr('transform', 'translate(12, 0)')
+            .attr("r", 5);
+
+	    priceTooltip.append("rect")
+            .attr("class", "tooltip")
+            .attr("width", 120)
+            .attr("height", 50)
+            .attr("x", 10)
+            .attr("y", -22)
+            .attr("rx", 4)
+            .attr("ry", 4);
+
+        priceTooltip.append("text")
+            .attr("class", "tooltip-date")
+            .attr("x", 18)
+            .attr("y", -2);
+
+
+        priceTooltip.append("text")
+            .attr("x", 18)
+            .attr("y", 18)
+            .text("Price:");
+
+        priceTooltip.append("text")
+            .attr("class", "tooltip-price")
+            .attr("x", 60)
+            .attr("y", 18);
+
+        focus.append("rect")
+            .attr("class", "overlay")
+            .attr("width", width)
+            .attr("height", height)
+            .on("mouseover", function() { priceTooltip.style("display", null); })
+            .on("mouseout", function() { priceTooltip.style("display", "none"); })
+            .on("mousemove", mousemove);
+
+
+
+        function mousemove() {
+            var x0 = x.invert(d3.mouse(this)[0]),
+                i = bisectDate(data, x0, 1),
+                d0 = data[i - 1],
+                d1 = data[i],
+                d = x0 - d0.date > d1.date - x0 ? d1 : d0;
+            priceTooltip.attr("transform", "translate(" + x(d.date)+20 + "," + y(d.price) + ")");
+            priceTooltip.select(".tooltip-date").text(dateFormatter (d.date));
+            priceTooltip.select(".tooltip-price").text(d.price);
+        }
+
+	    //put range tags
+	    var dateRange = ['1w', '1m', '3m', '6m', '1y', 'max']
+	    for (var i = 0, l = dateRange.length; i < l; i ++) {
+	      var v = dateRange[i];
+	      rangeSelection
+	        .append('text')
+	        .attr('class', 'chart__range-selection')
+	        .text(v)
+	        .attr('transform', 'translate(' + (38 * i) + ', 0)')
+	        .on('click', function(d) { focusOnRange(this.textContent); });
+    	}
+
+    	function focusOnRange(range) {
+	      var today = new Date(data[data.length - 1].date)
+	      var ext = new Date(data[data.length - 1].date)
+
+	      if (range === '1m')
+	        ext.setMonth(ext.getMonth() - 1)
+	    	console.log(ext)
+
+	      if (range === '1w')
+	        ext.setDate(ext.getDate() - 7)
+
+	      if (range === '3m')
+	        ext.setMonth(ext.getMonth() - 3)
+
+	      if (range === '6m')
+	        ext.setMonth(ext.getMonth() - 6)
+
+	      if (range === '1y')
+	        ext.setFullYear(ext.getFullYear() - 1)
+
+	      if (range === 'max')
+	        ext.setFullYear(ext.getFullYear() - 5)
+
+	      brush.extent([ext, today])
+	      console.log(brush.extent([ext, today]))
+	      brushed()
+    	}
+	    var min = d3.min(data.map(function(d) { return d.price; }));
+	    var max = d3.max(data.map(function(d) { return d.price; }));
+	});
+
+
+	function brushed() {
+	    x.domain(brush.empty() ? x2.domain() : brush.extent());
+	    focus.select(".chart_focus_area").attr("d", area);
+	    focus.select(".x.axis").call(xAxis);
+  }
+
+	function type(d) {
+	    return {
+	      date    : parseDate(d.Date) ,
+	      price   : +d.Close,
+	      average : +d.MA,
+	      volume : +d.Volume,
+	    }
+  }
+
+
+</script> 
